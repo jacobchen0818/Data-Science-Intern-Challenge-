@@ -1,0 +1,103 @@
+---
+title: "Summer 2022 Data Science Intern Challenge"
+author: "Bo Chen"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Question 1: Given some sample data, write a program to answer the following: click here to access the required data set
+
+On Shopify, we have exactly 100 sneaker shops, and each of these shops sells only one model of shoe. We want to do some analysis of the average order value (AOV). When we look at orders data over a 30 day window, we naively calculate an AOV of $3145.13. Given that we know these shops are selling sneakers, a relatively affordable item, something seems wrong with our analysis.
+
+a) Think about what could be going wrong with our calculation. Think about a better way to evaluate this data. 
+
+```{r}
+library(readr)
+library(dplyr)
+Sample_data<- 
+  read_csv("~/Desktop/data intern/2019 Winter Data Science Intern Challenge Data Set - Sheet1.csv")
+Sample_data
+mean(Sample_data$order_amount)
+```
+
+The naive calculation of an AOV is the crude overall mean value of the order amount.
+
+```{r,plot=T}
+boxplot(Sample_data$order_amount)
+hist(Sample_data$order_amount)
+```
+
+As we can see from the boxplot and the histgram of the order_amount, there are a few extremely large amount order values (outliers),
+and the naive calcualation of AOV is strongly affected by these outliers. So we need to find a proper solution to minimize the effects of these values when we calculate the
+AOV.
+
+Note: Based on the data, I believe there are three types of orders: regular retail orders(most of the orders), wholesale orders(outlier) and limited edition retail orders(outlier). Wholesale orders have larger order items and limited edition snearks have extremely high product prices comparing to regular retail orders.
+
+b) What metric would you report for this dataset?
+
+Before I consider the outliers, I would like to calculate the average order value for EACH SHOP.
+```{r}
+AOV_EACH=Sample_data %>%
+  group_by(shop_id) %>%
+  summarise_at(vars(order_amount), list(AOV_each_shop = mean))
+AOV_EACH$AOV_each_shop
+```
+
+I found that there are few extremely large AOV for some of shops. There are usually 2 ways to deal with the outliers when cleaning the data: Deleting or replacing.
+By simply removing the outlier, some information from the data is lost.
+By replacing, normally we use average or median to replace the outliers. Or we can use imputation method (consider outliers as random missing value) to replace the outliers. 
+For this case, I believe to replace these large AOV values with the MEDIAN is suffcient enough to
+calculate the final AOV.
+
+I used 1.5 IQR rule to find the oulier
+```{r}
+median1=median(AOV_EACH$AOV_each_shop)
+quantile(AOV_EACH$AOV_each_shop,0.75)+1.5*IQR(AOV_EACH$AOV_each_shop)
+NEW_AOV_EACH=replace(AOV_EACH$AOV_each_shop , which(AOV_EACH$AOV_each_shop>446.0569) , median1)
+mean(NEW_AOV_EACH)
+```
+
+c) What is its value?
+
+My final AOV is 299.8665.
+
+\newpage
+Question 2: For this question you’ll need to use SQL. Follow this link to access the data set required for the challenge. Please use queries to answer the following questions. Paste your queries along with your final numerical answers below.
+
+a) How many orders were shipped by Speedy Express in total? 
+
+Answer: 54
+
+Query:
+
+    SELECT COUNT(DISTINCT a.OrderID) as total FROM [Orders] a 
+     LEFT JOIN [Shippers] b on a.ShipperID = b.ShipperID
+     WHERE b.ShipperName='Speedy Express'
+
+
+b) What is the last name of the employee with the most orders? 
+
+Answer: Peacock
+
+Query:
+
+    Select b.LastName FROM 
+     (SELECT EmployeeID,COUNT(OrderID) as total FROM [Orders] GROUP BY EmployeeID) a 
+     LEFT JOIN [Employees] b on a.EmployeeID =b.EmployeeID ORDER BY a.total DESC LIMIT 1
+     
+c) What product was ordered the most by customers in Germany? 
+
+Answer: Boston Crab Meat
+
+Query:
+
+    SELECT d.ProductName FROM [OrderDetails] a 
+     LEFT JOIN [Orders] b on a.OrderId = b.OrderID 
+     LEFT JOIN [Customers] c on b.CustomerID = c.CustomerID
+     LEFT JOIN [Products] d on a.ProductId = d.ProductId
+     WHERE c.Country='Germany' GROUP BY a.ProductID ORDER BY SUM(a.Quantity) DESC LIMIT 1
+    
