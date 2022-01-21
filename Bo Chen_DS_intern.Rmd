@@ -86,7 +86,7 @@ Answer: Peacock
 Query:
 
     Select b.LastName FROM 
-     (SELECT EmployeeID,COUNT(OrderID) as total FROM [Orders] GROUP BY EmployeeID) a 
+     (SELECT EmployeeID,COUNT(Distinct OrderID) as total FROM [Orders] GROUP BY EmployeeID) a 
      LEFT JOIN [Employees] b on a.EmployeeID =b.EmployeeID ORDER BY a.total DESC LIMIT 1
      
 c) What product was ordered the most by customers in Germany? 
